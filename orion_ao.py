@@ -70,7 +70,42 @@ def rotate_to_angle(dev, angle):
         interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("6875f90538db760b"))
         result = interruptRead(dev, 0x81, 8)
         print(result.hex())
-        time.sleep(0.1)
+        time.sleep(0.01)
+
+def c2_byte(v):
+    if (v < 0):
+        return 0x80 - v
+    return v
+
+
+def create_byte_array_for_move(dx, dy):
+  """
+  Creates a byte array with the specified rotation.
+
+  Args:
+    rotation: The rotation value.
+
+  Returns:
+    A byte array.
+  """
+  return bytearray([0x32, c2_byte(dx), c2_byte(dy), 0x00, 0x81, 0x7a, 0x90, 0x90])
+
+
+
+
+def move_ao(dev, dx, dy):
+    mov_array = create_byte_array_for_move(dx, dy)
+    print(mov_array.hex())
+    interruptWrite(dev, 0x02,mov_array)
+
+def get_ao_pos(dev):
+    
+    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("30000000c7dd421a"))
+    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("62000000c7dd421a"))
+    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("3916421ac7dd421a"))
+    
+    result = interruptRead(dev, 0x81, 8)
+    print(result.hex())
 
 
 def open_dev(vid_want, pid_want, usbcontext=None):
@@ -104,6 +139,23 @@ def main():
     #dev.detachKernelDriver(0)
     dev.claimInterface(0)
     rotate_to_angle(dev, 90)
+
+    move_ao(dev, 120, 120)
+    time.sleep(0.3)
+    move_ao(dev, 120, 120)
+    time.sleep(0.3)
+    move_ao(dev, -127, -127)
+    time.sleep(0.3)
+    for i in range(200):
+        #move_ao(dev, 32, 0)
+        time.sleep(0.3)
+        move_ao(dev, 0, 32)
+        time.sleep(0.3)
+        #move_ao(dev, -32, 0)
+        time.sleep(0.3)
+        move_ao(dev, -0, -32)
+
+        get_ao_pos(dev)
 
 if __name__ == "__main__":
     main()
