@@ -98,6 +98,33 @@ def move_ao(dev, dx, dy):
     print(mov_array.hex())
     interruptWrite(dev, 0x02,mov_array)
 
+
+
+def build_motor_move_array(motor_idx, delta):
+  return bytearray([0x61, c2_byte(delta), c2_byte(motor_idx), 0x00, 0xc7, 0xdd, 0x42, 0x1a])
+
+
+
+def move_motors(dev, m1, m2, m3, m4):
+    mov_1 = build_motor_move_array(0, m1)
+    mov_2 = build_motor_move_array(1, m2)
+    mov_3 = build_motor_move_array(2, m3)
+    mov_4 = build_motor_move_array(3, m4)
+    interruptWrite(dev, 0x02,mov_1)
+    time.sleep(0.1)
+    interruptWrite(dev, 0x02,mov_2)
+    time.sleep(0.1)
+    interruptWrite(dev, 0x02,mov_3)
+    time.sleep(0.1)
+    interruptWrite(dev, 0x02,mov_4)
+    time.sleep(0.1)
+
+
+def b_2_i(v):
+    if (v > 128):
+        return v - 256
+    return v
+
 def get_ao_pos(dev):
     
     interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("30000000c7dd421a"))
@@ -105,7 +132,7 @@ def get_ao_pos(dev):
     interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("3916421ac7dd421a"))
     
     result = interruptRead(dev, 0x81, 8)
-    print(result.hex())
+    print(b_2_i(result[0]), b_2_i(result[1]), b_2_i(result[2]), b_2_i(result[3]))
 
 
 def open_dev(vid_want, pid_want, usbcontext=None):
@@ -138,8 +165,15 @@ def main():
     dev.resetDevice()
     #dev.detachKernelDriver(0)
     dev.claimInterface(0)
-    rotate_to_angle(dev, 90)
+    #rotate_to_angle(dev, 90)
 
+    get_ao_pos(dev)
+    move_motors(dev, 0, 0, 6, 0)
+    get_ao_pos(dev)
+
+
+
+"""
     move_ao(dev, 120, 120)
     time.sleep(0.3)
     move_ao(dev, 120, 120)
@@ -156,6 +190,7 @@ def main():
         move_ao(dev, -0, -32)
 
         get_ao_pos(dev)
+"""
 
 if __name__ == "__main__":
     main()
