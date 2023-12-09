@@ -24,7 +24,7 @@ def interruptRead(dev, endpoint, size, timeout=None):
                 timeout=(1000 if timeout is None else timeout))
 
 def interruptWrite(dev, endpoint, data, timeout=None):
-    print(data)
+    #print(data)
     dev.interruptWrite(endpoint, data, timeout=(1000 if timeout is
 None else timeout))
 
@@ -66,7 +66,7 @@ def rotate_to_angle(dev, angle):
 
 
 
-    for i in range(30):
+    for i in range(10):
         interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("6875f90538db760b"))
         result = interruptRead(dev, 0x81, 8)
         print(result.hex())
@@ -95,7 +95,7 @@ def create_byte_array_for_move(dx, dy):
 
 def move_ao(dev, dx, dy):
     mov_array = create_byte_array_for_move(dx, dy)
-    print(mov_array.hex())
+    #print(mov_array.hex())
     interruptWrite(dev, 0x02,mov_array)
 
 
@@ -110,14 +110,19 @@ def move_motors(dev, m1, m2, m3, m4):
     mov_2 = build_motor_move_array(1, m2)
     mov_3 = build_motor_move_array(2, m3)
     mov_4 = build_motor_move_array(3, m4)
+    print((mov_1.hex()))
+    print((mov_2.hex()))
+    print((mov_3.hex()))
+    print((mov_4.hex()))
+
     interruptWrite(dev, 0x02,mov_1)
-    time.sleep(0.1)
+    time.sleep(0.03)
     interruptWrite(dev, 0x02,mov_2)
-    time.sleep(0.1)
+    time.sleep(0.03)
     interruptWrite(dev, 0x02,mov_3)
-    time.sleep(0.1)
+    time.sleep(0.03)
     interruptWrite(dev, 0x02,mov_4)
-    time.sleep(0.1)
+    time.sleep(0.03)
 
 
 def b_2_i(v):
@@ -128,12 +133,13 @@ def b_2_i(v):
 def get_ao_pos(dev):
     
     interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("30000000c7dd421a"))
-    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("62000000c7dd421a"))
     interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("3916421ac7dd421a"))
+    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("62000000c7dd421a"))
+
     
     result = interruptRead(dev, 0x81, 8)
     print(b_2_i(result[0]), b_2_i(result[1]), b_2_i(result[2]), b_2_i(result[3]))
-
+    return b_2_i(result[0]), b_2_i(result[1]), b_2_i(result[2]), b_2_i(result[3])
 
 def open_dev(vid_want, pid_want, usbcontext=None):
     if usbcontext is None:
@@ -153,6 +159,89 @@ def open_dev(vid_want, pid_want, usbcontext=None):
             return udev.open()
     raise Exception("could not connect to AO unit")
 
+
+def get_homing_status(dev):
+    #interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("63000000c7dd421a"))
+    #interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("36050000c7dd421a"))
+    interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("34000000c7dd421a"))
+    result = interruptRead(dev, 0x81, 8)
+    return result[0]
+
+def home1(dev):
+    for k in range(6):
+        move_motors(dev, -20, 0, 0, 0)
+        print(hex(get_homing_status(dev)))
+
+    move_motors(dev, 100, 0, 0, 0)
+
+    for k in range(6):
+        move_motors(dev, 0, -20, 0, 0)
+        print(hex(get_homing_status(dev)))
+
+    move_motors(dev, 0, 100, 0, 0)
+
+    for k in range(6):
+        move_motors(dev, 0, 0, -20, 0)
+        print(hex(get_homing_status(dev)))
+
+    move_motors(dev, 0, 0, 100, 0)
+
+
+    for k in range(6):
+        move_motors(dev, 0, 0, 0, -20)
+        print(hex(get_homing_status(dev)))
+
+    move_motors(dev, 0, 0, 0, 100)
+    print(hex(get_homing_status(dev)))
+
+def home(dev):
+    m1, m2, m3, m4 = get_ao_pos(dev)
+    #print("initial pos = ", m1, m2, m3, m4)
+    move_motors(dev, m1, m2, m3, m4)
+    time.sleep(0.2)
+    m1, m2, m3, m4 = get_ao_pos(dev)
+    #print("initial pos = ", m1, m2, m3, m4)
+    status = get_homing_status(dev)
+
+    while(status != 0):
+        print(hex(status))
+        #m1, m2, m3, m4 = get_ao_pos(dev)
+        #print("new pos = ", m1, m2, m3, m4)
+        if (status & 0x80 != 0):
+            move_m4 = -7
+        else:
+            move_m4 = 2
+
+        if (status & 0x40 != 0):
+            move_m3 = -7
+        else:
+            move_m3 = 2
+
+        if (status & 0x20 != 0):
+            move_m2 = -7
+        else:
+            move_m2 = 2
+
+        if (status & 0x10 != 0):
+            move_m1 = -7
+        else:
+            move_m1 = 2
+
+        #print("new move is ", move_m1, move_m2, move_m3, move_m4)
+        move_motors(dev, move_m1, move_m2, move_m3, move_m4)
+
+        status = get_homing_status(dev)
+
+
+    m1, m2, m3, m4 = get_ao_pos(dev)
+    print("initial pos = ", m1, m2, m3, m4)
+    move_motors(dev, m1, m2, m3, m4)
+    time.sleep(1)
+    m1, m2, m3, m4 = get_ao_pos(dev)
+    print("initial pos = ", m1, m2, m3, m4)
+
+    return status
+
 def main():
     import argparse
 
@@ -163,12 +252,24 @@ def main():
     dev = open_dev(vid_want, pid_want, usbcontext)
     
     dev.resetDevice()
-    #dev.detachKernelDriver(0)
+
+    try:
+        dev.detachKernelDriver(0)
+    except:
+        print("already detached")
+
     dev.claimInterface(0)
+    move_ao(dev, -120, 120)
+    home(dev)
     #rotate_to_angle(dev, 90)
 
-    get_ao_pos(dev)
-    move_motors(dev, 0, 0, 6, 0)
+    #get_ao_pos(dev)
+    #move_motors(dev, 60, 0, 0, 0)
+    #move_motors(dev, 60, 0, 0, 0)
+    #move_motors(dev, 20, 0, 0, 0)
+    #move_motors(dev, -80, 0, 0, 0)
+
+
     get_ao_pos(dev)
 
 
