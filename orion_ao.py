@@ -95,7 +95,7 @@ def create_byte_array_for_move(dx, dy):
 
 def move_ao(dev, dx, dy):
     mov_array = create_byte_array_for_move(dx, dy)
-    #print(mov_array.hex())
+    print(mov_array.hex())
     interruptWrite(dev, 0x02,mov_array)
 
 
@@ -115,14 +115,23 @@ def move_motors(dev, m1, m2, m3, m4):
     print((mov_3.hex()))
     print((mov_4.hex()))
 
-    interruptWrite(dev, 0x02,mov_1)
-    time.sleep(0.03)
-    interruptWrite(dev, 0x02,mov_2)
-    time.sleep(0.03)
-    interruptWrite(dev, 0x02,mov_3)
-    time.sleep(0.03)
-    interruptWrite(dev, 0x02,mov_4)
-    time.sleep(0.03)
+    dt = 0.01
+
+    if (m1 != 0):
+        interruptWrite(dev, 0x02,mov_1)
+        time.sleep(dt)
+
+    if (m2 != 0):
+        interruptWrite(dev, 0x02,mov_2)
+        time.sleep(dt)
+
+    if (m3 != 0):    
+        interruptWrite(dev, 0x02,mov_3)
+        time.sleep(dt)
+
+    if (m4 != 0):
+        interruptWrite(dev, 0x02,mov_4)
+        time.sleep(dt)
 
 
 def b_2_i(v):
@@ -259,8 +268,21 @@ def main():
         print("already detached")
 
     dev.claimInterface(0)
-    move_ao(dev, -120, 120)
+    
     home(dev)
+    m1, m2, m3, m4 = get_ao_pos(dev)
+    print("initial pos1 = ", m1, m2, m3, m4)
+
+    for i in range(300):
+        #move_ao(dev, -2, 0)
+        move_motors(dev, 5, 0, -5, 0)
+        time.sleep(0.03)
+        move_motors(dev, -5, 0, 5, 0)
+        time.sleep(0.03)
+
+        m1, m2, m3, m4 = get_ao_pos(dev)
+        print("initial pos1 = ", m1, m2, m3, m4)
+
     #rotate_to_angle(dev, 90)
 
     #get_ao_pos(dev)
@@ -293,5 +315,130 @@ def main():
         get_ao_pos(dev)
 """
 
+
+class orion_ao:
+    def __init__(self):
+        self.do_init()
+
+    def home(self):
+        home(self.dev)
+
+
+    def do_init(self):
+        vid_want = 0x03EB
+        pid_want = 0x2013
+
+        usbcontext = usb1.USBContext()
+        self.dev = open_dev(vid_want, pid_want, usbcontext)
+        
+        self.dev.resetDevice()
+
+        try:
+            self.dev.detachKernelDriver(0)
+        except:
+            print("already detached")
+
+        self.dev.claimInterface(0)
+        
+        self.home()
+
+        self.m1 = 0
+        self.m2 = 0
+        self.m3 = 0
+        self.m4 = 0
+
+        self.ax = 0
+        self.ay = 0
+
+    def clip_motor_pos(self, v):
+        if (v < -80):
+            v = -80
+        if (v > 80):
+            v = 80
+
+        return v
+
+    def  set_motors(self, target_m1, target_m2, target_m3, target_m4):
+        target_m1 = self.clip_motor_pos(target_m1)
+        target_m2 = self.clip_motor_pos(target_m2)
+        target_m3 = self.clip_motor_pos(target_m3)
+        target_m4 = self.clip_motor_pos(target_m4)
+
+        delta_m1 = target_m1 - self.m1
+        delta_m2 = target_m2 - self.m2
+        delta_m3 = target_m3 - self.m3
+        delta_m4 = target_m4 - self.m4
+
+        move_motors(self.dev, delta_m1, delta_m2, delta_m3, delta_m4)
+
+        self.m1 = target_m1
+        self.m2 = target_m2
+        self.m3 = target_m3
+        self.m4 = target_m4
+
+
+    def move_motors(self, dm1, dm2, dm3, dm4):
+        self.target_m1 = self.m1 + dm1
+        self.target_m2 = self.m2 + dm2
+        self.target_m3 = self.m3 + dm3
+        self.target_m4 = self.m4 + dm4
+
+        self.set_motors(self.target_m1, self.target_m2, self.target_m3, self.target_m4)
+        
+# motors are set as
+# m1 at 2 pm
+# m2 at 5 pm
+# m3 at 7 pm
+# m4 at 10 pm
+# let's say that x axis is the m1,m3 line
+# let's say that y axis is the m2,m4 line 
+# these are at 45 degres from the guider, but this is easy mapping
+
+
+
+    def motor_to_xy(self, m1, m2, m3, m4):
+        tx = m1 - m3
+        ty = m2 - m4
+
+        return tx, ty
+
+    def xy_to_motor(self, tx, ty):
+        m1 = tx
+        m2 = ty
+        m3 = 0
+        m4 = 0
+
+        ddx = tx // 2
+        ddy = ty // 2
+
+        m1 -= ddx 
+        m3 -= ddx 
+        m2 -= ddy
+        m4 -= ddy
+
+        return m1, m2, m3, m4
+
+
+    def set_ao(self, tx, ty):
+        m1, m2, m3, m4 = self.xy_to_motor(tx, ty)
+        self.set_motors(m1, m2, m3, m4)
+        self.ax, self.ay = self.motor_to_xy(self.m1, self.m2, self.m3, self.m4) 
+
+
+    def move_ao(self, dx, dy):
+        self.set_ao(self.ax + dx, self.ay + dy)
+
 if __name__ == "__main__":
-    main()
+    ao = orion_ao()
+
+    m1,m2,m3, m4 = ao.xy_to_motor(20, 19)
+    print("cp ", m1,m2,m3,m4)
+    print(ao.motor_to_xy(m1,m2,m3,m4))
+
+    for i in range(300):
+        ao.move_ao(3, 0)
+        time.sleep(0.03)
+        ao.move_ao(-3, 0)
+        time.sleep(0.03)
+
+   
