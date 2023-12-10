@@ -6,6 +6,7 @@ import binascii
 import time
 import usb1
 import time
+import math
 
 
 def validate_read(expected, actual, msg):
@@ -66,7 +67,7 @@ def rotate_to_angle(dev, angle):
 
 
 
-    for i in range(10):
+    for i in range(1110):
         interruptWrite(dev, 0x02, hex_string_to_formatted_binary_array("6875f90538db760b"))
         result = interruptRead(dev, 0x81, 8)
         print(result.hex())
@@ -115,7 +116,7 @@ def move_motors(dev, m1, m2, m3, m4):
     print((mov_3.hex()))
     print((mov_4.hex()))
 
-    dt = 0.01
+    dt = 0.0
 
     if (m1 != 0):
         interruptWrite(dev, 0x02,mov_1)
@@ -251,69 +252,9 @@ def home(dev):
 
     return status
 
-def main():
-    import argparse
-
-    vid_want = 0x03EB
-    pid_want = 0x2013
-
-    usbcontext = usb1.USBContext()
-    dev = open_dev(vid_want, pid_want, usbcontext)
-    
-    dev.resetDevice()
-
-    try:
-        dev.detachKernelDriver(0)
-    except:
-        print("already detached")
-
-    dev.claimInterface(0)
-    
-    home(dev)
-    m1, m2, m3, m4 = get_ao_pos(dev)
-    print("initial pos1 = ", m1, m2, m3, m4)
-
-    for i in range(300):
-        #move_ao(dev, -2, 0)
-        move_motors(dev, 5, 0, -5, 0)
-        time.sleep(0.03)
-        move_motors(dev, -5, 0, 5, 0)
-        time.sleep(0.03)
-
-        m1, m2, m3, m4 = get_ao_pos(dev)
-        print("initial pos1 = ", m1, m2, m3, m4)
-
-    #rotate_to_angle(dev, 90)
-
-    #get_ao_pos(dev)
-    #move_motors(dev, 60, 0, 0, 0)
-    #move_motors(dev, 60, 0, 0, 0)
-    #move_motors(dev, 20, 0, 0, 0)
-    #move_motors(dev, -80, 0, 0, 0)
-
 
     get_ao_pos(dev)
 
-
-
-"""
-    move_ao(dev, 120, 120)
-    time.sleep(0.3)
-    move_ao(dev, 120, 120)
-    time.sleep(0.3)
-    move_ao(dev, -127, -127)
-    time.sleep(0.3)
-    for i in range(200):
-        #move_ao(dev, 32, 0)
-        time.sleep(0.3)
-        move_ao(dev, 0, 32)
-        time.sleep(0.3)
-        #move_ao(dev, -32, 0)
-        time.sleep(0.3)
-        move_ao(dev, -0, -32)
-
-        get_ao_pos(dev)
-"""
 
 
 class orion_ao:
@@ -428,17 +369,33 @@ class orion_ao:
     def move_ao(self, dx, dy):
         self.set_ao(self.ax + dx, self.ay + dy)
 
+
+
+    def circle_test(self, speed, diameter):
+        alpha = 0.0
+        rotate_to_angle(self.dev, 90)
+        while(True):
+            alpha = alpha + speed
+            x = math.sin(alpha) * diameter
+            y = math.cos(alpha) * diameter
+
+            self.set_ao(int(round(x)), int(round(y)))
+            time.sleep(0.01)
+
+
 if __name__ == "__main__":
     ao = orion_ao()
 
-    m1,m2,m3, m4 = ao.xy_to_motor(20, 19)
-    print("cp ", m1,m2,m3,m4)
-    print(ao.motor_to_xy(m1,m2,m3,m4))
+    #m1,m2,m3, m4 = ao.xy_to_motor(20, 19)
+    #print("cp ", m1,m2,m3,m4)
+    #print(ao.motor_to_xy(m1,m2,m3,m4))
 
-    for i in range(300):
-        ao.move_ao(3, 0)
-        time.sleep(0.03)
-        ao.move_ao(-3, 0)
-        time.sleep(0.03)
+    #for i in range(300):
+    #    ao.move_ao(3, 0)
+    #    time.sleep(0.03)
+    #    ao.move_ao(-3, 0)
+    #    time.sleep(0.03)
+
+    ao.circle_test(0.01, 10)
 
    
