@@ -100,11 +100,11 @@ def open_dev(vid_want, pid_want, usbcontext=None):
 
 class focuser:
     def __init__(self):
-        vid_want, pid_want = 0x0F18, 0x0006
+        vid_want, pid_want = 0x0F18, 0x0005
 
 
         self.usbcontext = usb1.USBContext()
-        self.dev = open_dev(vid_want, pid_want, usbcontext)
+        self.dev = open_dev(vid_want, pid_want, self.usbcontext)
         self.dev.claimInterface(0)
         self.dev.resetDevice()
 

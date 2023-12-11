@@ -177,32 +177,7 @@ def get_homing_status(dev):
     result = interruptRead(dev, 0x81, 8)
     return result[0]
 
-def home1(dev):
-    for k in range(6):
-        move_motors(dev, -20, 0, 0, 0)
-        print(hex(get_homing_status(dev)))
 
-    move_motors(dev, 100, 0, 0, 0)
-
-    for k in range(6):
-        move_motors(dev, 0, -20, 0, 0)
-        print(hex(get_homing_status(dev)))
-
-    move_motors(dev, 0, 100, 0, 0)
-
-    for k in range(6):
-        move_motors(dev, 0, 0, -20, 0)
-        print(hex(get_homing_status(dev)))
-
-    move_motors(dev, 0, 0, 100, 0)
-
-
-    for k in range(6):
-        move_motors(dev, 0, 0, 0, -20)
-        print(hex(get_homing_status(dev)))
-
-    move_motors(dev, 0, 0, 0, 100)
-    print(hex(get_homing_status(dev)))
 
 def home(dev):
     m1, m2, m3, m4 = get_ao_pos(dev)
@@ -370,6 +345,8 @@ class orion_ao:
         self.set_ao(self.ax + dx, self.ay + dy)
 
 
+    def rotate_to_angle(self, angle):
+        rotate_to_angle(self.dev, angle)
 
     def circle_test(self, speed, diameter):
         alpha = 0.0
