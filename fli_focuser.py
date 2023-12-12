@@ -100,7 +100,7 @@ def open_dev(vid_want, pid_want, usbcontext=None):
 
 class focuser:
     def __init__(self):
-        vid_want, pid_want = 0x0F18, 0x0005
+        vid_want, pid_want = 0x0F18, 0x0006
 
 
         self.usbcontext = usb1.USBContext()
@@ -113,7 +113,7 @@ class focuser:
         move_stepper_motor(self.dev, delta) 
         
     def get_pos(self):
-        return fli_getstepperpos(self.dev)   
+        return fli_getsteppos(self.dev)   
 
     def home(self):
         home_stepper_motor(self.dev)
